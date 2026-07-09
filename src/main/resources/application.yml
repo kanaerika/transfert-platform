@@ -20,6 +20,8 @@ spring:
 
 app:
   plafond-mensuel: 1000000   # Plafond mensuel Hors CEMAC en FCFA
+  sms:
+    provider: console        # 'console' (dev: code affiché dans les logs) | 'twilio' (prod)
   jwt:
     secret: "changer-cette-cle-secrete-de-64-caracteres-minimum-en-production!!"
     expiration-ms: 86400000  # 24h
