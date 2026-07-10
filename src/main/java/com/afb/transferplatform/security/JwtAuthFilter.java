@@ -35,15 +35,25 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             try {
                 Long agentId = jwtService.extractAgentId(header.substring(7));
                 Agent agent = agentRepository.findById(agentId).orElse(null);
-                if (agent != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+                if (agent == null) {
+                    logger.warn("[JWT] Token valide mais agent id=" + agentId
+                            + " introuvable en base (base réinitialisée ?) → 401. "
+                            + "Solution : recréer un compte et se reconnecter.");
+                } else if (SecurityContextHolder.getContext().getAuthentication() == null) {
                     UsernamePasswordAuthenticationToken auth =
                             new UsernamePasswordAuthenticationToken(agent, null, List.of());
                     auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(auth);
                 }
-            } catch (Exception ignored) {
+            } catch (Exception e) {
                 // Jeton invalide ou expiré : la requête reste anonyme.
+                logger.warn("[JWT] Token rejeté (" + e.getClass().getSimpleName() + ": "
+                        + e.getMessage() + ") → 401. Solution : se reconnecter.");
             }
+        } else if (request.getRequestURI().startsWith("/api/")
+                && !request.getRequestURI().startsWith("/api/auth")) {
+            logger.warn("[JWT] Aucun header Authorization sur " + request.getRequestURI()
+                    + " → 401 si endpoint protégé.");
         }
         filterChain.doFilter(request, response);
     }
