@@ -49,7 +49,7 @@ test agent and one sample transfer:
 | Password | `password` |
 | Role | `Instant Transfert` |
 
-Use these credentials against `POST /api/auth/login` to get a JWT.
+Use these credentials against `POST  http://localhost:8080` to get a JWT.
 
 ## Tests
 
