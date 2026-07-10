@@ -30,4 +30,12 @@ public interface TransfertRepository extends JpaRepository<Transfert, Long> {
     long cumulMensuel(@Param("nomClient") String nomClient,
                       @Param("debut") LocalDate debut,
                       @Param("fin") LocalDate fin);
+                      /** Clients connus (infos du transfert le plus récent de chaque client) dont le nom commence par la saisie. */
+    @Query("""
+           SELECT t FROM Transfert t
+           WHERE UPPER(t.nomClient) LIKE CONCAT(UPPER(:prefixe), '%')
+             AND t.id = (SELECT MAX(t2.id) FROM Transfert t2 WHERE UPPER(t2.nomClient) = UPPER(t.nomClient))
+           ORDER BY t.nomClient
+           """)
+    List<Transfert> rechercherClientsConnus(@Param("prefixe") String prefixe);
 }

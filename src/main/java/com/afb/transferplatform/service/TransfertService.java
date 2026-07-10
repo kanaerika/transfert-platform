@@ -159,4 +159,17 @@ public class TransfertService {
         maj.accept(c);
         compteurRepository.save(c);
     }
+
+    /** Auto-complétion : clients connus dont le nom commence par la saisie (min. 2 caractères). */
+    public List<ClientConnu> clientsConnus(String prefixe) {
+        if (prefixe == null || prefixe.trim().length() < 2) return List.of();
+        return transfertRepository.rechercherClientsConnus(prefixe.trim()).stream()
+                .limit(6)
+                .map(t -> new ClientConnu(
+                        t.getNomClient(),
+                        t.getDateNaissance(),
+                        t.getNaturePiece(),
+                        t.getNumeroPiece()))
+                .toList();
+    }
 }

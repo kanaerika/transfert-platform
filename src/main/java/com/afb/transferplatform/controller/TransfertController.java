@@ -58,4 +58,10 @@ public class TransfertController {
     public BilanResponse bilan(@AuthenticationPrincipal Agent agent) {
         return transfertService.bilan(agent);
     }
+
+    /** Auto-complétion des clients connus pour faciliter la saisie de l'agent. */
+    @GetMapping("/clients")
+    public List<ClientConnu> clientsConnus(@RequestParam(defaultValue = "") String q) {
+        return transfertService.clientsConnus(q);
+    }
 }

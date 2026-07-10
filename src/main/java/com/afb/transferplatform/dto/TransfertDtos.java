@@ -84,4 +84,11 @@ public class TransfertDtos {
             long plafond) {}
 
     public record CanalDto(String nom, String description) {}
+
+    /** Client déjà présent en base, proposé en auto-complétion à l'agent. */
+    public record ClientConnu(
+            String nomClient,
+            String dateNaissance,
+            String naturePiece,
+            String numeroPiece) {}
 }
