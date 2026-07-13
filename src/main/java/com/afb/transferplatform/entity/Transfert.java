@@ -1,56 +1,60 @@
 package com.afb.transferplatform.entity;
-
+ 
 import jakarta.persistence.*;
 import java.time.LocalDate;
-
+ 
 @Entity
 @Table(name = "transferts", indexes = {
         @Index(name = "idx_transfert_client", columnList = "nomClient"),
         @Index(name = "idx_transfert_date", columnList = "dateTransfert")
 })
 public class Transfert {
-
+ 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
+ 
     @Column(nullable = false)
     private String nomClient;
-
+ 
     private String dateNaissance;
     private String naturePiece;
     private String numeroPiece;
-
+ 
     @Column(nullable = false)
     private long montant;
-
+ 
     @Column(nullable = false)
     private String paysDestination;
-
+ 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private StatutTransfert statut = StatutTransfert.EXECUTE;
-
+ 
     /** Référence de la plateforme de transfert (ex: PLT-0098-2026) */
     private String reference;
-
+ 
+    /** Motif d'annulation ou de rejet (obligatoire, min. 10 caractères) */
+    @Column(length = 300)
+    private String motif;
+ 
     private String agence;
-
+ 
     /** Canal utilisé : MoneyGram, Small World, ... */
     private String canal;
-
+ 
     @Column(nullable = false)
     private LocalDate dateTransfert;
-
+ 
     /** Cumul Hors CEMAC du mois pour ce client au moment de l'exécution */
     private long cumulMois;
-
+ 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "agent_id")
     private Agent agent;
-
+ 
     public Transfert() {}
-
+ 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     public String getNomClient() { return nomClient; }
@@ -65,6 +69,9 @@ public class Transfert {
     public void setMontant(long montant) { this.montant = montant; }
     public String getPaysDestination() { return paysDestination; }
     public void setPaysDestination(String paysDestination) { this.paysDestination = paysDestination; }
+    public String getMotif() { return motif; }
+    public void setMotif(String motif) { this.motif = motif; }
+ 
     public StatutTransfert getStatut() { return statut; }
     public void setStatut(StatutTransfert statut) { this.statut = statut; }
     public String getReference() { return reference; }
