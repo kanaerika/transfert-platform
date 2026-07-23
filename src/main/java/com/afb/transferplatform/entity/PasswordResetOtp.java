@@ -16,7 +16,7 @@ public class PasswordResetOtp {
     private Long id;
 
     @Column(nullable = false)
-    private String telephone;
+    private String email;
 
     /** Hash BCrypt du code OTP à 6 chiffres */
     @Column(nullable = false)
@@ -39,8 +39,8 @@ public class PasswordResetOtp {
 
     public PasswordResetOtp() {}
 
-    public PasswordResetOtp(String telephone, String codeHash, Instant expiration) {
-        this.telephone = telephone;
+    public PasswordResetOtp(String email, String codeHash, Instant expiration) {
+        this.email = email;
         this.codeHash = codeHash;
         this.expiration = expiration;
     }
@@ -51,8 +51,8 @@ public class PasswordResetOtp {
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
-    public String getTelephone() { return telephone; }
-    public void setTelephone(String telephone) { this.telephone = telephone; }
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
     public String getCodeHash() { return codeHash; }
     public void setCodeHash(String codeHash) { this.codeHash = codeHash; }
     public Instant getExpiration() { return expiration; }

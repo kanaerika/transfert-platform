@@ -35,55 +35,55 @@ public class PasswordResetService {
     private final AgentRepository agentRepository;
     private final PasswordResetOtpRepository otpRepository;
     private final PasswordEncoder passwordEncoder;
-    private final SmsService smsService;
+    private final EmailService emailService;
     private final SecureRandom random = new SecureRandom();
 
     public PasswordResetService(AgentRepository agentRepository,
                                 PasswordResetOtpRepository otpRepository,
                                 PasswordEncoder passwordEncoder,
-                                SmsService smsService) {
+                                EmailService emailService) {
         this.agentRepository = agentRepository;
         this.otpRepository = otpRepository;
         this.passwordEncoder = passwordEncoder;
-        this.smsService = smsService;
+        this.emailService = emailService;
     }
 
     /** Étape 1 : génère et envoie l'OTP par SMS. */
     @Transactional
     public MessageResponse forgotPassword(ForgotPasswordRequest request) {
-        String tel = normaliser(request.telephone());
-        Optional<Agent> agentOpt = agentRepository.findByTelephone(tel);
+        String email = normaliser(request.email());
+        Optional<Agent> agentOpt = agentRepository.findByEmail(email);
 
         // Réponse générique : on ne révèle pas si un compte existe ou non (anti-énumération)
         if (agentOpt.isEmpty()) {
-            log.warn("Demande de réinitialisation pour un numéro inconnu : {}", tel);
+            log.warn("Demande de réinitialisation pour un email inconnu : {}", email);
             return new MessageResponse(
-                    "Si un compte existe avec ce numéro, un code de vérification a été envoyé par SMS.");
+                    "Si un compte existe avec cet email, un code de vérification a été envoyé.");
         }
 
         // Invalider les anciens codes puis en émettre un nouveau
-        otpRepository.invaliderTous(tel);
+        otpRepository.invaliderTous(email);
 
         String code = genererCode();
         PasswordResetOtp otp = new PasswordResetOtp(
-                tel,
+                email,
                 passwordEncoder.encode(code),
                 Instant.now().plus(VALIDITE_OTP));
         otpRepository.save(otp);
 
-        smsService.envoyer(tel,
+        emailService.envoyer(email, "Réinitialisation de votre mot de passe",
                 "Votre code de réinitialisation est : " + code
                         + " (valide 10 minutes). Ne le partagez avec personne.");
 
         return new MessageResponse(
-                "Si un compte existe avec ce numéro, un code de vérification a été envoyé par SMS.");
+                "Si un compte existe avec cet email, un code de vérification a été envoyé.");
     }
 
     /** Étape 2 : vérifie le code OTP saisi. */
     @Transactional
     public MessageResponse verifyOtp(VerifyOtpRequest request) {
-        String tel = normaliser(request.telephone());
-        PasswordResetOtp otp = chargerOtpValide(tel);
+        String email = normaliser(request.email());
+        PasswordResetOtp otp = chargerOtpValide(email);
 
         if (!passwordEncoder.matches(request.code(), otp.getCodeHash())) {
             otp.setTentatives(otp.getTentatives() + 1);
@@ -114,8 +114,8 @@ public class PasswordResetService {
                     "Le mot de passe doit contenir au moins 6 caractères.");
         }
 
-        String tel = normaliser(request.telephone());
-        PasswordResetOtp otp = chargerOtpValide(tel);
+        String email = normaliser(request.email());
+        PasswordResetOtp otp = chargerOtpValide(email);
 
         // Sécurité : re-vérifier le code fourni ET exiger qu'il ait été validé à l'étape 2
         if (!otp.isVerifie() || !passwordEncoder.matches(request.code(), otp.getCodeHash())) {
@@ -123,7 +123,7 @@ public class PasswordResetService {
                     "Code invalide ou non vérifié.");
         }
 
-        Agent agent = agentRepository.findByTelephone(tel)
+        Agent agent = agentRepository.findByEmail(email)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "Compte introuvable."));
 
@@ -137,9 +137,9 @@ public class PasswordResetService {
         return new MessageResponse("Mot de passe réinitialisé avec succès. Vous pouvez vous connecter.");
     }
 
-    private PasswordResetOtp chargerOtpValide(String telephone) {
+    private PasswordResetOtp chargerOtpValide(String email) {
         PasswordResetOtp otp = otpRepository
-                .findTopByTelephoneAndUtiliseFalseOrderByIdDesc(telephone)
+                .findTopByEmailAndUtiliseFalseOrderByIdDesc(email)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST,
                         "Aucun code actif. Veuillez demander un nouveau code."));
         if (otp.estExpire()) {
@@ -153,7 +153,7 @@ public class PasswordResetService {
         return String.format("%06d", random.nextInt(1_000_000));
     }
 
-    private String normaliser(String telephone) {
-        return telephone.replaceAll("[\\s.-]", "");
+    private String normaliser(String email) {
+        return email.trim().toLowerCase();
     }
 }

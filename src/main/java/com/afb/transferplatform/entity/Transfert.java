@@ -48,7 +48,10 @@ public class Transfert {
  
     /** Cumul Hors CEMAC du mois pour ce client au moment de l'exécution */
     private long cumulMois;
- 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "partenaire_id", nullable = false)
+    private Partenaire partenaire;
+    
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "agent_id")
     private Agent agent;
@@ -84,6 +87,9 @@ public class Transfert {
     public void setDateTransfert(LocalDate dateTransfert) { this.dateTransfert = dateTransfert; }
     public long getCumulMois() { return cumulMois; }
     public void setCumulMois(long cumulMois) { this.cumulMois = cumulMois; }
+    public Partenaire getPartenaire() { return partenaire; }
+    public void setPartenaire(Partenaire partenaire) { this.partenaire = partenaire; }
+
     public Agent getAgent() { return agent; }
     public void setAgent(Agent agent) { this.agent = agent; }
 }

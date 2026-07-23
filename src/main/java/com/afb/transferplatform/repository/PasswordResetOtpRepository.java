@@ -11,10 +11,10 @@ import java.util.Optional;
 public interface PasswordResetOtpRepository extends JpaRepository<PasswordResetOtp, Long> {
 
     /** Dernier OTP actif (non utilisé) pour ce numéro */
-    Optional<PasswordResetOtp> findTopByTelephoneAndUtiliseFalseOrderByIdDesc(String telephone);
+    Optional<PasswordResetOtp> findTopByEmailAndUtiliseFalseOrderByIdDesc(String email);
 
     /** Invalide tous les anciens OTP d'un numéro avant d'en émettre un nouveau */
     @Modifying
-    @Query("UPDATE PasswordResetOtp o SET o.utilise = true WHERE o.telephone = :telephone AND o.utilise = false")
-    void invaliderTous(@Param("telephone") String telephone);
+    @Query("UPDATE PasswordResetOtp o SET o.utilise = true WHERE o.email = :email AND o.utilise = false")
+    void invaliderTous(@Param("email") String email);
 }

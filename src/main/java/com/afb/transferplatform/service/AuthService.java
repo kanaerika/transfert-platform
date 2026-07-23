@@ -1,6 +1,5 @@
 package com.afb.transferplatform.service;
 
-
 import com.afb.transferplatform.dto.AuthDtos.*;
 import com.afb.transferplatform.entity.Agent;
 import com.afb.transferplatform.repository.AgentRepository;
@@ -8,8 +7,12 @@ import com.afb.transferplatform.security.JwtService;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.Instant;
+
+/** Connexion par email + mot de passe, activation des comptes par invitation. */
 @Service
 public class AuthService {
 
@@ -26,53 +29,52 @@ public class AuthService {
     }
 
     public AuthResponse login(LoginRequest request) {
-        Agent agent = agentRepository.findByTelephone(normaliser(request.telephone()))
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.UNAUTHORIZED, "Identifiants incorrects."));
-        if (!passwordEncoder.matches(request.motDePasse(), agent.getMotDePasse())) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Identifiants incorrects.");
+        Agent agent = agentRepository.findByEmail(request.email().trim().toLowerCase())
+                .orElseThrow(this::identifiantsInvalides);
+        if (!agent.compteActive()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Compte non activé. Consultez votre email d'invitation ou demandez-en un nouveau.");
         }
-        return toResponse(agent);
+        if (!agent.isActif()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Compte désactivé. Contactez votre administrateur.");
+        }
+        if (agent.getPartenaire() != null && !agent.getPartenaire().isActif()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Le partenaire " + agent.getPartenaire().getNom() + " est désactivé.");
+        }
+        if (!passwordEncoder.matches(request.motDePasse(), agent.getMotDePasse())) {
+            throw identifiantsInvalides();
+        }
+        return new AuthResponse(
+                jwtService.generer(agent.getId()),
+                agent.getId(), agent.getNomComplet(), agent.getCodeAgent(),
+                agent.getRole(), agent.getNomPartenaire());
     }
 
-    public AuthResponse register(RegisterRequest request) {
+    /** Activation du compte via le lien d'invitation : l'utilisateur choisit son mot de passe. */
+    @Transactional
+    public MessageResponse activer(ActivationRequest request) {
         if (!request.motDePasse().equals(request.confirmationMotDePasse())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "Les mots de passe ne correspondent pas.");
         }
-        String tel = normaliser(request.telephone());
-        if (agentRepository.existsByTelephone(tel)) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "Un compte existe déjà avec ce numéro de téléphone.");
+        Agent agent = agentRepository.findByTokenInvitation(request.token())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Lien d'activation invalide. Demandez une nouvelle invitation."));
+        if (agent.getTokenExpiration() == null || Instant.now().isAfter(agent.getTokenExpiration())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Lien d'activation expiré. Demandez une nouvelle invitation.");
         }
-        if (agentRepository.existsByEmail(request.email().toLowerCase())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "Un compte existe déjà avec cet email.");
-        }
-        Agent agent = new Agent(
-                request.nomComplet().trim(),
-                tel,
-                request.email().toLowerCase(),
-                request.role(),
-                passwordEncoder.encode(request.motDePasse()),
-                genererCodeAgent(),
-                "DEI");
+        agent.setMotDePasse(passwordEncoder.encode(request.motDePasse()));
+        agent.setTokenInvitation(null);
+        agent.setTokenExpiration(null);
         agentRepository.save(agent);
-        return toResponse(agent);
+        return new MessageResponse("Compte activé avec succès. Vous pouvez vous connecter.");
     }
 
-    private AuthResponse toResponse(Agent agent) {
-        String token = jwtService.generateToken(agent.getId(), agent.getTelephone());
-        return new AuthResponse(token, agent.getId(), agent.getNomComplet(),
-                agent.getCodeAgent(), agent.getRole());
-    }
-
-    private String normaliser(String telephone) {
-        return telephone.replaceAll("[\\s.-]", "");
-    }
-
-    private String genererCodeAgent() {
-        long n = agentRepository.count() + 1;
-        return String.format("%02d", n);
+    private ResponseStatusException identifiantsInvalides() {
+        return new ResponseStatusException(HttpStatus.UNAUTHORIZED,
+                "Email ou mot de passe incorrect.");
     }
 }

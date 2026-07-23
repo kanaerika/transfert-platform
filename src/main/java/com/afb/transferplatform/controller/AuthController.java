@@ -1,4 +1,5 @@
 package com.afb.transferplatform.controller;
+
 import com.afb.transferplatform.dto.AuthDtos.*;
 import com.afb.transferplatform.service.AuthService;
 import com.afb.transferplatform.service.PasswordResetService;
@@ -23,26 +24,24 @@ public class AuthController {
         return authService.login(request);
     }
 
-    @PostMapping("/register")
-    public AuthResponse register(@Valid @RequestBody RegisterRequest request) {
-        return authService.register(request);
+    /** Activation du compte via le lien d'invitation reçu par email. */
+    @PostMapping("/activation")
+    public MessageResponse activer(@Valid @RequestBody ActivationRequest request) {
+        return authService.activer(request);
     }
 
-    // ---- Mot de passe oublié : OTP par SMS ----
+    // ---- Mot de passe oublié : OTP par email ----
 
-    /** Étape 1 : envoie un code OTP par SMS au numéro fourni */
     @PostMapping("/forgot-password")
     public MessageResponse forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
         return passwordResetService.forgotPassword(request);
     }
 
-    /** Étape 2 : vérifie le code OTP saisi par l'utilisateur */
     @PostMapping("/verify-otp")
     public MessageResponse verifyOtp(@Valid @RequestBody VerifyOtpRequest request) {
         return passwordResetService.verifyOtp(request);
     }
 
-    /** Étape 3 : réinitialise le mot de passe (nouveau + confirmation) */
     @PostMapping("/reset-password")
     public MessageResponse resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
         return passwordResetService.resetPassword(request);

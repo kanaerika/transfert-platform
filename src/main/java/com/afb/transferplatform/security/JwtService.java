@@ -22,11 +22,11 @@ public class JwtService {
         this.expirationMs = expirationMs;
     }
 
-    public String generateToken(Long agentId, String telephone) {
+    /** Génère le jeton de session à partir de l'identifiant du compte. */
+    public String generer(Long agentId) {
         Date now = new Date();
         return Jwts.builder()
                 .subject(String.valueOf(agentId))
-                .claim("telephone", telephone)
                 .issuedAt(now)
                 .expiration(new Date(now.getTime() + expirationMs))
                 .signWith(key)

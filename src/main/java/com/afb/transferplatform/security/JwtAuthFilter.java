@@ -10,6 +10,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
+import org.springframework.lang.NonNull;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
@@ -27,34 +28,50 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     }
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request,
-                                    HttpServletResponse response,
-                                    FilterChain filterChain) throws ServletException, IOException {
+    protected void doFilterInternal(@NonNull HttpServletRequest request,
+                                    @NonNull HttpServletResponse response,
+                                    @NonNull FilterChain filterChain) throws ServletException, IOException {
+            System.out.println("URI : " + request.getRequestURI());
+            System.out.println("Authorization : " + request.getHeader("Authorization"));
+            
         String header = request.getHeader("Authorization");
         if (header != null && header.startsWith("Bearer ")) {
-            try {
-                Long agentId = jwtService.extractAgentId(header.substring(7));
-                Agent agent = agentRepository.findById(agentId).orElse(null);
-                if (agent == null) {
-                    logger.warn("[JWT] Token valide mais agent id=" + agentId
-                            + " introuvable en base (base réinitialisée ?) → 401. "
-                            + "Solution : recréer un compte et se reconnecter.");
-                } else if (SecurityContextHolder.getContext().getAuthentication() == null) {
-                    UsernamePasswordAuthenticationToken auth =
-                            new UsernamePasswordAuthenticationToken(agent, null, List.of());
-                    auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                    SecurityContextHolder.getContext().setAuthentication(auth);
-                }
-            } catch (Exception e) {
-                // Jeton invalide ou expiré : la requête reste anonyme.
-                logger.warn("[JWT] Token rejeté (" + e.getClass().getSimpleName() + ": "
-                        + e.getMessage() + ") → 401. Solution : se reconnecter.");
-            }
+            handleAuthHeader(header, request);
         } else if (request.getRequestURI().startsWith("/api/")
                 && !request.getRequestURI().startsWith("/api/auth")) {
             logger.warn("[JWT] Aucun header Authorization sur " + request.getRequestURI()
                     + " → 401 si endpoint protégé.");
         }
         filterChain.doFilter(request, response);
+    }
+
+    private void handleAuthHeader(@NonNull String header, @NonNull HttpServletRequest request) {
+        try {
+            Long agentId = jwtService.extractAgentId(header.substring(7));
+            Agent agent = null;
+            if (agentId != null) {
+                agent = agentRepository.findById(agentId).orElse(null);
+            }
+            if (agent != null && (!agent.isActif() || !agent.compteActive()
+                    || (agent.getPartenaire() != null && !agent.getPartenaire().isActif()))) {
+                agent = null; // compte ou partenaire désactivé → accès refusé
+            }
+            if (agent == null) {
+                logger.warn("[JWT] Token valide mais agent id=" + agentId
+                        + " introuvable en base (base réinitialisée ?) → 401. "
+                        + "Solution : recréer un compte et se reconnecter.");
+            } else if (SecurityContextHolder.getContext().getAuthentication() == null) {
+                UsernamePasswordAuthenticationToken auth =
+                        new UsernamePasswordAuthenticationToken(agent, null,
+                                List.of(new org.springframework.security.core.authority.SimpleGrantedAuthority(
+                                        "ROLE_" + agent.getRole())));
+                auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                SecurityContextHolder.getContext().setAuthentication(auth);
+            }
+        } catch (Exception e) {
+            // Jeton invalide ou expiré : la requête reste anonyme.
+            logger.warn("[JWT] Token rejeté (" + e.getClass().getSimpleName() + ": "
+                    + e.getMessage() + ") → 401. Solution : se reconnecter.");
+        }
     }
 }

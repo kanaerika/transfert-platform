@@ -1,45 +1,41 @@
 server:
   port: 8080
- 
+
 spring:
   application:
     name: transfer-platform
-  datasource:
-    # Base H2 persistée sur disque : les comptes et transferts SURVIVENT aux redémarrages
-    url: jdbc:h2:file:./data/plafonds;DB_CLOSE_DELAY=-1;AUTO_SERVER=TRUE
-    driver-class-name: org.h2.Driver
-    username: sa
-    password: ""
-  jpa:
-    hibernate:
-      ddl-auto: update
-    open-in-view: false
-  h2:
-    console:
-      enabled: true
-      path: /h2-console
- 
-app:
-  plafond-mensuel: 1000000   # Plafond mensuel Hors CEMAC en FCFA
-  sms:
-    provider: console        # 'console' (dev: code affiché dans les logs) | 'twilio' (prod)
-  jwt:
-    secret: "changer-cette-cle-secrete-de-64-caracteres-minimum-en-production!!"
-    expiration-ms: 86400000  # 24h
- 
----
-spring:
-  config:
-    activate:
-      on-profile: prod
+
   datasource:
     url: jdbc:postgresql://localhost:5432/transfer_db
-    driver-class-name: org.postgresql.Driver
     username: postgres
     password: erika
+    driver-class-name: org.postgresql.Driver
+
   jpa:
     hibernate:
       ddl-auto: update
     show-sql: true
-    properties:
-      hibernate:
+    open-in-view: false
+
+app:
+  frontend-url: http://localhost:4200
+
+  email:
+    provider: console
+
+  plafond-mensuel: 1000000
+
+  sms:
+    provider: console
+
+  jwt:
+    secret: "changer-cette-cle-secrete-de-64-caracteres-minimum-en-production!!"
+    expiration-ms: 86400000
+
+    springdoc:
+  api-docs:
+    enabled: true
+
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui.html

@@ -18,6 +18,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
  
 @Service
 public class TransfertService {
@@ -135,9 +136,10 @@ public class TransfertService {
         t.setReference(req.reference().trim());
         t.setAgence(agent.getAgence());
         t.setCanal(req.canal());
-        t.setDateTransfert(LocalDate.now());
+        t.setDateTransfert(LocalDate.now(java.time.Clock.systemDefaultZone()));
         t.setCumulMois(cemac ? cumul : cumul + req.montant());
         t.setAgent(agent);
+        t.setPartenaire(agent.getPartenaire());
         transfertRepository.save(t);
  
         incrementer(agent, c -> c.setExecutes(c.getExecutes() + 1));
@@ -158,9 +160,9 @@ public class TransfertService {
     @Transactional
     public TransfertResponse annuler(Long id, String motif, Agent agent) {
         validerMotif(motif);
-        Transfert t = transfertRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                        "Transfert introuvable."));
+        Transfert t = transfertRepository.findById(Objects.requireNonNull(id))
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                "Transfert introuvable."));
         if (t.getStatut() != StatutTransfert.EXECUTE) {
             throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
                     "Seul un transfert exécuté peut être annulé.");
@@ -176,9 +178,9 @@ public class TransfertService {
     @Transactional
     public TransfertResponse rejeter(Long id, String motif, Agent agent) {
         validerMotif(motif);
-        Transfert t = transfertRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                        "Transfert introuvable."));
+        Transfert t = transfertRepository.findById(Objects.requireNonNull(id))
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                "Transfert introuvable."));
         if (t.getStatut() != StatutTransfert.EXECUTE) {
             throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
                     "Seul un transfert exécuté peut être rejeté.");
@@ -199,18 +201,18 @@ public class TransfertService {
  
     @Transactional(readOnly = true)
     public BilanResponse bilan(Agent agent) {
-        LocalDate jour = LocalDate.now();
+        LocalDate jour = LocalDate.now(java.time.Clock.systemDefaultZone());
         CompteurJournalier c = compteurRepository.findByAgentAndJour(agent, jour)
-                .orElseGet(() -> new CompteurJournalier(agent, jour));
+            .orElseGet(() -> new CompteurJournalier(agent, jour));
         int total = c.getExecutes() + c.getRejetes() + c.getAnnules() + c.getNonClotures();
         return new BilanResponse(jour, c.getExecutes(), c.getRejetes(),
-                c.getAnnules(), c.getNonClotures(), total);
+            c.getAnnules(), c.getNonClotures(), total);
     }
  
     // ------------------------------------------------------------------
  
     private long cumulDuMois(String nomClient) {
-        LocalDate maintenant = LocalDate.now();
+        LocalDate maintenant = LocalDate.now(java.time.Clock.systemDefaultZone());
         LocalDate debut = maintenant.withDayOfMonth(1);
         LocalDate fin = maintenant.withDayOfMonth(maintenant.lengthOfMonth());
         return transfertRepository.cumulMensuel(normaliser(nomClient), debut, fin);
@@ -227,11 +229,11 @@ public class TransfertService {
     }
  
     private void incrementer(Agent agent, java.util.function.Consumer<CompteurJournalier> maj) {
-        LocalDate jour = LocalDate.now();
+        LocalDate jour = LocalDate.now(java.time.Clock.systemDefaultZone());
         CompteurJournalier c = compteurRepository.findByAgentAndJour(agent, jour)
-                .orElseGet(() -> new CompteurJournalier(agent, jour));
+            .orElseGet(() -> new CompteurJournalier(agent, jour));
         maj.accept(c);
-        compteurRepository.save(c);
+        compteurRepository.save(Objects.requireNonNull(c));
     }
  
     /** Auto-complétion : clients connus dont le nom commence par la saisie (min. 2 caractères). */

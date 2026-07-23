@@ -39,8 +39,29 @@ public class SecurityConfig {
             .exceptionHandling(eh -> eh.authenticationEntryPoint(
                     new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
             .authorizeHttpRequests(auth -> auth
-                    .requestMatchers("/api/auth/**", "/api/referentiel", "/api/health", "/h2-console/**").permitAll()
-                    .anyRequest().authenticated())
+
+    .requestMatchers(
+            "/swagger-ui/**",
+            "/swagger-ui.html",
+            "/v3/api-docs/**",
+            "/v3/api-docs",
+            "/swagger-resources/**",
+            "/webjars/**"
+    ).permitAll()
+
+    .requestMatchers(
+            "/api/auth/**",
+            "/api/referentiel",
+            "/api/invitation/**",
+            "/api/health",
+            "/h2-console/**"
+    ).permitAll()
+
+    .requestMatchers("/api/superadmin/**").hasRole("SUPER_ADMIN")
+    .requestMatchers("/api/partenaire/**").hasRole("ADMIN_PARTENAIRE")
+
+    .anyRequest().authenticated()
+)
             .headers(h -> h.frameOptions(f -> f.sameOrigin())) // pour la console H2
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
@@ -52,6 +73,7 @@ public class SecurityConfig {
         config.setAllowedOrigins(List.of("http://localhost:4200"));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
+        config.setAllowCredentials(true);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
         return source;
@@ -62,3 +84,4 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 }
+ 
